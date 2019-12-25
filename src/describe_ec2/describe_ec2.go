@@ -1,9 +1,10 @@
 package main
 
 import (
-	"data"
 	"encoding/json"
 	"fmt"
+
+	"data"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
