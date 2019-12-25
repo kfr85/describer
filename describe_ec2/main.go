@@ -36,7 +36,7 @@ func main() {
 		}
 	}
 
-	// APIコールを並列処理で実施
+	// APIコールを並行処理で実施
 	sem := make(chan struct{}, 50)
 	eg := errgroup.Group{}
 	for _, info := range infos {
@@ -47,6 +47,7 @@ func main() {
 		})
 		<-sem
 	}
+
 	// 並行処理中にエラーが出た場合は異常終了する
 	if err := eg.Wait(); err != nil {
 		log.Fatal(err)
