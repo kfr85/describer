@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"data"
@@ -12,7 +11,7 @@ import (
 )
 
 // DescribeEC2 retiurn error
-func DescribeEC2(profileName string, regionName string) error {
+func DescribeEC2(profileName string, regionName string, dataChan chan data.Data, errChan chan error) {
 	var ret []*ec2.Reservation
 	var data data.Data
 
@@ -27,7 +26,8 @@ func DescribeEC2(profileName string, regionName string) error {
 	for {
 		req, err := svc.DescribeInstances(configInput)
 		if err != nil {
-			return fmt.Errorf("describe error! profile: %s, region: %s -> %s", profileName, regionName, err)
+			errChan <- fmt.Errorf("describe error! profile: %s, region: %s -> %s", profileName, regionName, err)
+			return
 		}
 
 		ret = append(ret, req.Reservations...)
@@ -42,11 +42,6 @@ func DescribeEC2(profileName string, regionName string) error {
 	data.Infomation.Profile = profileName
 	data.Infomation.Region = regionName
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("marshal error! profile: %s, region: %s -> %s", profileName, regionName, err)
-	}
-
-	fmt.Printf("%s\n", string(jsonData))
-	return nil
+	dataChan <- data
+	return
 }

@@ -1,11 +1,10 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	goHomeDir "github.com/mitchellh/go-homedir"
-	"golang.org/x/sync/errgroup"
 
 	"data"
 	"loop"
@@ -36,21 +35,17 @@ func main() {
 		}
 	}
 
+	dataChan := make(chan data.Data)
+	errChan := make(chan error)
 	// APIコールを並行処理で実施
-	sem := make(chan struct{}, 50)
-	eg := errgroup.Group{}
 	for _, info := range infos {
-		info := info
-		sem <- struct{}{}
-		eg.Go(func() error {
-			return DescribeEC2(info.Profile, info.Region)
-		})
-		<-sem
-	}
-
-	// 並行処理中にエラーが出た場合は異常終了する
-	if err := eg.Wait(); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+		go DescribeEC2(info.Profile, info.Region, dataChan, errChan)
+		select {
+		case data := <-dataChan:
+			fmt.Println(data)
+		case err := <-errChan:
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 }
