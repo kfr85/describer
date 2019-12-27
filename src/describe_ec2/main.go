@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -18,13 +19,13 @@ func main() {
 	// アカウント一覧の取得
 	profiles, err := loop.FetchProfile(path)
 	if err != nil {
-		panic(nil)
+		panic(err)
 	}
 
 	// リージョン一覧の取得
 	regions, err := loop.FetchRegion(profiles[0], "ap-northeast-1")
 	if err != nil {
-		panic(nil)
+		panic(err)
 	}
 
 	// ループリストを作成
@@ -35,17 +36,35 @@ func main() {
 		}
 	}
 
-	dataChan := make(chan data.Data)
-	errChan := make(chan error)
+	dataChan := make(chan data.Data, 50)
+	errChan := make(chan error, 1)
 	// APIコールを並行処理で実施
-	for _, info := range infos {
-		go DescribeEC2(info.Profile, info.Region, dataChan, errChan)
+	go func() {
+		defer close(dataChan)
+		defer close(errChan)
+		for _, info := range infos {
+			DescribeEC2(info.Profile, info.Region, dataChan, errChan)
+		}
+	}()
+
+	// 並行処理でデータを受け取ったものから出力処理
+	for {
 		select {
 		case data := <-dataChan:
-			fmt.Println(data)
+			jsonData, err := json.Marshal(data)
+			if err != nil {
+				fmt.Printf("marshal error! profile: %s, region: %s -> %s", data.Infomation.Profile, data.Infomation.Region, err)
+				os.Exit(1)
+			}
+			fmt.Printf("%s\n", jsonData)
 		case err := <-errChan:
-			fmt.Println(err)
-			os.Exit(1)
+			// errChanをクローズするので一度はここを通るため、nil判定をする
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			} else {
+				return
+			}
 		}
 	}
 }
