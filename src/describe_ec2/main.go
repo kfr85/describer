@@ -50,21 +50,24 @@ func main() {
 	// 並行処理でデータを受け取ったものから出力処理
 	for {
 		select {
-		case data := <-dataChan:
-			jsonData, err := json.Marshal(data)
-			if err != nil {
-				fmt.Printf("marshal error! profile: %s, region: %s -> %s", data.Infomation.Profile, data.Infomation.Region, err)
-				os.Exit(1)
-			}
-			fmt.Printf("%s\n", jsonData)
-		case err := <-errChan:
-			// errChanをクローズするので一度はここを通るため、nil判定をする
-			if err != nil {
+		case data, ok := <-dataChan:
+		  if ok {
+		  	jsonData, err := json.Marshal(data)
+  			if err != nil {
+			  	fmt.Printf("marshal error! profile: %s, region: %s -> %s", data.Infomation.Profile, data.Infomation.Region, err)
+				  os.Exit(1)
+			  }
+		  	fmt.Printf("%s\n", jsonData)
+		  } else {
+		    return
+		  }
+		case err, ok := <-errChan:
+		  if ok {
 				fmt.Println(err)
 				os.Exit(1)
-			} else {
-				return
-			}
+		  } else {
+		    return
+		  }
 		}
 	}
 }
